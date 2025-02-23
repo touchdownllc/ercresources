@@ -61,6 +61,7 @@ def get_page_url(confluence, page_id):
 def find_heading_for_item_name(content, item_name, score_threshold=0.60):
     soup = BeautifulSoup(content, 'html.parser')
     headings = soup.find_all(['h1', 'h2'])
+    print(item_name)
     
     def normalize(text):
         return re.sub(r'\s+', ' ', text.strip().lower())
@@ -116,7 +117,37 @@ def find_variables_table(soup):
                 return table
     return None
 
-def create_links(source_content, target_content, target_page_url):
+def create_links_thecb(source_content, target_content, target_page_url):
+    soup = BeautifulSoup(source_content, 'html.parser')
+
+    table = find_variables_table(soup)
+    
+    if not table:
+        print("Table not found in source content: " + target_page_url)
+        print(source_content)
+        return source_content
+
+    rows = table.find_all('tr')
+    
+    for row in rows[1:]:
+        cells = row.find_all('td')
+        if len(cells) >= 3:
+            item_name = cells[2].get_text(strip=True)
+            heading = find_heading_for_item_name(target_content, item_name)
+            
+            if heading:
+                encoded_heading = quote(heading.replace(' ', '-').replace('#', ''))               
+                link = f'<a href="{target_page_url}#{encoded_heading}">{item_name}</a>'                
+                cells[2].clear()
+                cells[2].append(BeautifulSoup(link, 'html.parser'))
+            else:
+                # write the text string back -- to undo prior runs
+                cells[2].clear()
+                cells[2].append(item_name)
+
+    return str(soup)
+
+def create_links_sbec(source_content, target_content, target_page_url):
     soup = BeautifulSoup(source_content, 'html.parser')
 
     table = find_variables_table(soup)
@@ -187,7 +218,7 @@ def main():
     else:
         target_content = target_page['body']['storage']['value']
         target_page_url = get_page_url(confluence, args.target_page_id)
-        updated_content = create_links(source_content, target_content, target_page_url)
+        updated_content = create_links_sbec(source_content, target_content, target_page_url)
         version_comment = "Updated links"
 
     # Update the page
