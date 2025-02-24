@@ -8,7 +8,7 @@ Python scripts to publish and manage ERC publications on Confluence.
 1. Clone the repository
 2. Create a virtual environment:
    ```
-   python -m venv venv
+   python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 3. Install dependencies:
@@ -17,48 +17,180 @@ Python scripts to publish and manage ERC publications on Confluence.
    ```
 4. Create a `.env` file in the root directory with your Confluence credentials (see `.env.example`)
 
-## Set up a virtual environment
-#... on a Mac
-```
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
 
+# ERC Link Updater
 
-# ERC Publications Publisher
+A Python utility for automatically creating hyperlinks between data set pages and report pages in Confluence.
 
-## Environment Variables
+## Overview
 
-Create a `.env` file with the following variables:
+This script searches for variable names in a source Confluence page (data set page) and links them to corresponding headings in a target Confluence page (report page). It's designed to work with TEA, THECB, and SBEC variable tables.
 
-- `CONFLUENCE_URL`: URL of your Confluence instance
-- `CONFLUENCE_USERNAME`: Username/email for Confluence
-- `CONFLUENCE_API_TOKEN`: API token for authentication
-- `CONFLUENCE_SPACE_KEY`: Confluence space key
-- `CONFLUENCE_PARENT_PAGE_ID`: Parent page ID where publications will be created
+## Requirements
+
+- Python 3.6+
+- Required Python packages (install via `pip`):
+  - `atlassian-python-api`
+  - `beautifulsoup4`
+  - `python-dotenv`
+
+## Setup
+
+1. **Install dependencies**:
+   ```
+   pip install atlassian-python-api beautifulsoup4 python-dotenv
+   ```
+
+2. **Create a `.env` file** in the same directory as the script with the following variables:
+   ```
+   CONFLUENCE_URL=https://your-instance.atlassian.net
+   CONFLUENCE_USERNAME=your_email@example.com
+   CONFLUENCE_API_TOKEN=your_api_token
+   CONFLUENCE_SPACE=SPACENAME
+   ```
+
+   To create an API token:
+   - Go to [Atlassian API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+   - Click "Create API token"
+   - Give it a name and copy the token to your `.env` file
 
 ## Usage
 
-### Publishing Pages
-
-Run the script to publish/update pages:
+### Basic Usage
 
 ```
-python erc_publish_publications.py --csv-file your_file.csv
+python erc_link_updater.py SOURCE_PAGE_ID TARGET_PAGE_ID
 ```
 
-### Deleting Pages
+Where:
+- `SOURCE_PAGE_ID`: The ID of the Confluence page containing the variables table
+- `TARGET_PAGE_ID`: The ID of the Confluence page containing headings to link to
 
-To see what pages would be deleted (dry run):
+### Reset Links
+
+To remove all hyperlinks in the variables table and reset to plain text:
 
 ```
-python erc_publish_publications.py --delete --dry-run
+python erc_link_updater.py SOURCE_PAGE_ID TARGET_PAGE_ID --reset
 ```
 
-To actually delete all pages:
+### Finding Page IDs
+
+To find a Confluence page ID:
+1. Open the page in your browser
+2. Look at the URL, which will be in a format like:
+   `https://your-instance.atlassian.net/wiki/spaces/SPACE/pages/123456789/Page+Title`
+3. The number (e.g., `123456789`) is the page ID
+
+## How It Works
+
+1. The script connects to Confluence using your API credentials
+2. It locates the variables table in the source page
+3. For each variable name in the table, it searches for a matching heading in the target page
+4. When a match is found, it creates a hyperlink to that specific heading
+5. The script has built-in matching logic to handle different variable naming patterns
+
+## Troubleshooting
+
+- If no table is found, the script will output "Table not found in source content"
+- If variables aren't matching to headings, try adjusting the `score_threshold` parameter in the `find_heading_for_item_name` function
+- Check Confluence permissions to ensure your API token has read/write access to the pages
+
+
+# ERC Publish Publications
+
+A Python utility for automatically creating and organizing research publication pages in Confluence based on CSV data.
+
+## Overview
+
+This script reads research publication information from a CSV file and creates hierarchically organized pages in Confluence. It creates type-based parent pages (e.g., "Published Research") and publication detail pages under them.
+
+## Requirements
+
+- Python 3.6+
+- Required Python packages (install via `pip`):
+  - `atlassian-python-api`
+  - `pandas`
+  - `requests`
+  - `python-dotenv`
+
+## Setup
+
+1. **Install dependencies**:
+   ```
+   pip install atlassian-python-api pandas requests python-dotenv
+   ```
+
+2. **Create a `.env` file** in the same directory as the script with the following variables:
+   ```
+   CONFLUENCE_URL=https://your-instance.atlassian.net
+   CONFLUENCE_USERNAME=your_email@example.com
+   CONFLUENCE_API_TOKEN=your_api_token
+   CONFLUENCE_SPACE_KEY=SPACENAME
+   CONFLUENCE_PARENT_PAGE_ID=123456789
+   ```
+
+   To create an API token:
+   - Go to [Atlassian API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+   - Click "Create API token"
+   - Give it a name and copy the token to your `.env` file
+
+## CSV Format
+
+Your CSV file should contain the following columns:
+- `Title` (required): Publication title
+- `Authors` (required): Publication authors
+- `Type` (required): Publication type (e.g., "Research Publication")
+- `URL` (optional): Link to the publication
+- `Source URL` (optional): Publishing source URL
+- `Date` (optional): Publication date
+- `Abstract` (optional): Publication abstract
+- `Key Terms` (optional): Related key terms
+- `Topic` (optional): Research topic
+- `THECB #` (optional): THECB Project ID
+- `Publishing ERC` (optional): Publishing ERC name
+- `Project Abbreviated Name` (optional): Short project name
+- `Research Area` (optional): Research field or area
+
+## Usage
+
+### Creating/Updating Publication Pages
+
+```
+python erc_publish_publications.py --csv-file your_publications.csv
+```
+
+By default, the script looks for a file named `erc_publications.csv` if no file is specified.
+
+### Deleting All Pages (with confirmation)
 
 ```
 python erc_publish_publications.py --delete
 ```
 
+This requires typing "yes" to confirm deletion.
+
+### Preview Deletion (dry run)
+
+```
+python erc_publish_publications.py --delete --dry-run
+```
+
+This shows what would be deleted without actually removing any pages.
+
+## How It Works
+
+1. The script connects to Confluence using your API credentials
+2. It creates or updates parent pages for each unique publication type in your CSV
+3. For each publication in the CSV:
+   - Creates or updates a page with formatted details
+   - Organizes it under the appropriate type page
+   - Adds labels for filtering/categorization
+4. Invalid URLs are logged as warnings but pages are still created
+
+## Troubleshooting
+
+- Check the logs for detailed error messages
+- Ensure your Confluence API token has read/write permissions
+- Verify the CSV format matches the expected column names
+- If pages aren't appearing, check that the parent page ID is correct
