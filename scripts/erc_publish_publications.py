@@ -294,7 +294,7 @@ def main():
     parser = argparse.ArgumentParser(description='Confluence Page Manager')
     parser.add_argument('--delete', action='store_true', help='Delete all pages under parent page')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be deleted without actually deleting')
-    parser.add_argument('--csv-file', type=str, default='erc_publications_updated.csv', 
+    parser.add_argument('--csv-file', type=str, default='erc_publications.csv', 
                       help='Path to the CSV file with publication data')
     args = parser.parse_args()
 
@@ -340,6 +340,11 @@ def main():
 
     # Normal page creation/update flow
     try:
+
+        # Check if args.csv_file is provided
+        if args.csv_file is None:
+            raise FileNotFoundError("CSV file path not provided. Please specify a CSV file using the --csv-file argument.")
+    
         # Load data
         df = pd.read_csv(args.csv_file)
         
