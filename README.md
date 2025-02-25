@@ -23,6 +23,8 @@ Python scripts to publish and manage ERC publications on Confluence.
 
 A Python utility for automatically creating and organizing research publication pages in Confluence based on CSV data.
 
+Code: https://github.com/touchdownllc/ercresources/blob/main/scripts/erc_publish_publications.py
+
 ### Overview
 
 This script reads research publication information from a CSV file and creates hierarchically organized pages in Confluence. It creates type-based parent pages (e.g., "Published Research") and publication detail pages under them.
@@ -120,6 +122,8 @@ This shows what would be deleted without actually removing any pages.
 ## ERC Link Updater
 
 A Python utility for automatically creating hyperlinks between data set pages and report pages in Confluence.
+
+code: https://github.com/touchdownllc/ercresources/blob/main/scripts/erc_link_updater.py 
 
 ### Overview
 
