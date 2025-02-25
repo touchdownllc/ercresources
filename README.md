@@ -18,85 +18,6 @@ Python scripts to publish and manage ERC publications on Confluence.
 
 
 # Python Scripts Documentation
-## ERC Link Updater
-
-A Python utility for automatically creating hyperlinks between data set pages and report pages in Confluence.
-
-### Overview
-
-This script searches for variable names in a source Confluence page (data set page) and links them to corresponding headings in a target Confluence page (report page). It's designed to work with TEA, THECB, and SBEC variable tables.
-
-### Requirements
-
-- Python 3.6+
-- Required Python packages (install via `pip`):
-  - `atlassian-python-api`
-  - `beautifulsoup4`
-  - `python-dotenv`
-
-### Setup
-
-1. **Install dependencies**:
-   ```
-   pip install atlassian-python-api beautifulsoup4 python-dotenv
-   ```
-
-2. **Create a `.env` file** in the same directory as the script with the following variables:
-   ```
-   CONFLUENCE_URL=https://your-instance.atlassian.net
-   CONFLUENCE_USERNAME=your_email@example.com
-   CONFLUENCE_API_TOKEN=your_api_token
-   CONFLUENCE_SPACE=SPACENAME
-   ```
-
-   To create an API token:
-   - Go to [Atlassian API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
-   - Click "Create API token"
-   - Give it a name and copy the token to your `.env` file
-
-### Usage
-
-```
-python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --link-type LINK_TYPE
-```
-
-Where:
-- `DATASET_PAGE_ID`: The ID of the Confluence page containing the variables table
-- `REPORT_PAGE_ID`: The ID of the Confluence page containing headings to link to
-- 'LINK_TYPE' can be
-  - `thecb`: Texas Higher Education Coordinating Board (default)
-  - `sbec`: State Board for Educator Certification
-  - `tea`: Texas Education Agency
-
-#### Reset Links
-
-To remove all hyperlinks in the variables table and reset to plain text:
-
-```
-python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --reset
-```
-
-#### Finding Page IDs
-
-To find a Confluence page ID:
-1. Open the page in your browser
-2. Look at the URL, which will be in a format like:
-   `https://your-instance.atlassian.net/wiki/spaces/SPACE/pages/123456789/Page+Title`
-3. The number (e.g., `123456789`) is the page ID
-
-### How It Works
-
-1. The script connects to Confluence using your API credentials
-2. It locates the variables table in the source page
-3. For each variable name in the table, it searches for a matching heading in the target page
-4. When a match is found, it creates a hyperlink to that specific heading
-5. The script has built-in matching logic to handle different variable naming patterns
-
-### Troubleshooting
-
-- If no table is found, the script will output "Table not found in source content"
-- If variables aren't matching to headings, try adjusting the `score_threshold` parameter in the `find_heading_for_item_name` function
-- Check Confluence permissions to ensure your API token has read/write access to the pages
 
 ## ERC Publish Publications
 
@@ -119,7 +40,7 @@ This script reads research publication information from a CSV file and creates h
 
 1. **Install dependencies**:
    ```
-   pip install atlassian-python-api pandas requests python-dotenv
+   pip install -r requirements.txt
    ```
 
 2. **Create a `.env` file** in the same directory as the script with the following variables:
@@ -195,3 +116,83 @@ This shows what would be deleted without actually removing any pages.
 - Ensure your Confluence API token has read/write permissions
 - Verify the CSV format matches the expected column names
 - If pages aren't appearing, check that the parent page ID is correct
+
+## ERC Link Updater
+
+A Python utility for automatically creating hyperlinks between data set pages and report pages in Confluence.
+
+### Overview
+
+This script searches for variable names in a source Confluence page (data set page) and links them to corresponding headings in a target Confluence page (report page). It's designed to work with TEA, THECB, and SBEC variable tables.
+
+### Requirements
+
+- Python 3.6+
+- Required Python packages (install via `pip`):
+  - `atlassian-python-api`
+  - `beautifulsoup4`
+  - `python-dotenv`
+
+### Setup
+
+1. **Install dependencies**:
+   ```
+   pip install -r requirements.txt
+   ```
+
+2. **Create a `.env` file** in the same directory as the script with the following variables:
+   ```
+   CONFLUENCE_URL=https://your-instance.atlassian.net
+   CONFLUENCE_USERNAME=your_email@example.com
+   CONFLUENCE_API_TOKEN=your_api_token
+   CONFLUENCE_SPACE=SPACENAME
+   ```
+
+   To create an API token:
+   - Go to [Atlassian API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+   - Click "Create API token"
+   - Give it a name and copy the token to your `.env` file
+
+### Usage
+
+```
+python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --link-type LINK_TYPE
+```
+
+Where:
+- `DATASET_PAGE_ID`: The ID of the Confluence page containing the variables table
+- `REPORT_PAGE_ID`: The ID of the Confluence page containing headings to link to
+- 'LINK_TYPE' can be
+  - `thecb`: Texas Higher Education Coordinating Board (default)
+  - `sbec`: State Board for Educator Certification
+  - `tea`: Texas Education Agency
+
+#### Reset Links
+
+To remove all hyperlinks in the variables table and reset to plain text:
+
+```
+python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --reset
+```
+
+#### Finding Page IDs
+
+To find a Confluence page ID:
+1. Open the page in your browser
+2. Look at the URL, which will be in a format like:
+   `https://your-instance.atlassian.net/wiki/spaces/SPACE/pages/123456789/Page+Title`
+3. The number (e.g., `123456789`) is the page ID
+
+### How It Works
+
+1. The script connects to Confluence using your API credentials
+2. It locates the variables table in the source page
+3. For each variable name in the table, it searches for a matching heading in the target page
+4. When a match is found, it creates a hyperlink to that specific heading
+5. The script has built-in matching logic to handle different variable naming patterns
+
+### Troubleshooting
+
+- If no table is found, the script will output "Table not found in source content"
+- If variables aren't matching to headings, try adjusting the `score_threshold` parameter in the `find_heading_for_item_name` function
+- Check Confluence permissions to ensure your API token has read/write access to the pages
