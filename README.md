@@ -5,7 +5,7 @@ Python scripts to publish and manage ERC publications on Confluence.
 
 ## Setup
 
-1. Clone the repository
+1. Clone the repository or download as a .zip file
 2. Create a virtual environment:
    ```
    python3 -m venv venv
