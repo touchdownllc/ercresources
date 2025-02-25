@@ -59,19 +59,32 @@ This script searches for variable names in a source Confluence page (data set pa
 ### Basic Usage
 
 ```
-python erc_link_updater.py SOURCE_PAGE_ID TARGET_PAGE_ID
+python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID
 ```
 
 Where:
-- `SOURCE_PAGE_ID`: The ID of the Confluence page containing the variables table
-- `TARGET_PAGE_ID`: The ID of the Confluence page containing headings to link to
+- `DATASET_PAGE_ID`: The ID of the Confluence page containing the variables table
+- `REPORT_PAGE_ID`: The ID of the Confluence page containing headings to link to
+
+### Specifying Link Type
+
+The script supports different educational agency formats:
+
+```
+python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --link-type TYPE
+```
+
+Where `TYPE` can be:
+- `thecb`: Texas Higher Education Coordinating Board (default)
+- `sbec`: State Board for Educator Certification
+- `tea`: Texas Education Agency
 
 ### Reset Links
 
 To remove all hyperlinks in the variables table and reset to plain text:
 
 ```
-python erc_link_updater.py SOURCE_PAGE_ID TARGET_PAGE_ID --reset
+python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --reset
 ```
 
 ### Finding Page IDs
@@ -95,7 +108,6 @@ To find a Confluence page ID:
 - If no table is found, the script will output "Table not found in source content"
 - If variables aren't matching to headings, try adjusting the `score_threshold` parameter in the `find_heading_for_item_name` function
 - Check Confluence permissions to ensure your API token has read/write access to the pages
-
 
 # ERC Publish Publications
 
