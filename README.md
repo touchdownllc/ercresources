@@ -1,6 +1,5 @@
 # ERC Resources Python Scripts
- for the Confluence ERC Resources site
-
+ 
 Python scripts to publish and manage ERC publications on Confluence.
 
 ## Setup
@@ -18,15 +17,16 @@ Python scripts to publish and manage ERC publications on Confluence.
 4. Create a `.env` file in the root directory with your Confluence credentials (see `.env.example`)
 
 
-# ERC Link Updater
+# Python Scripts Documentation
+## ERC Link Updater
 
 A Python utility for automatically creating hyperlinks between data set pages and report pages in Confluence.
 
-## Overview
+### Overview
 
 This script searches for variable names in a source Confluence page (data set page) and links them to corresponding headings in a target Confluence page (report page). It's designed to work with TEA, THECB, and SBEC variable tables.
 
-## Requirements
+### Requirements
 
 - Python 3.6+
 - Required Python packages (install via `pip`):
@@ -34,7 +34,7 @@ This script searches for variable names in a source Confluence page (data set pa
   - `beautifulsoup4`
   - `python-dotenv`
 
-## Setup
+### Setup
 
 1. **Install dependencies**:
    ```
@@ -54,32 +54,21 @@ This script searches for variable names in a source Confluence page (data set pa
    - Click "Create API token"
    - Give it a name and copy the token to your `.env` file
 
-## Usage
-
-### Basic Usage
+### Usage
 
 ```
-python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID
+python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --link-type LINK_TYPE
 ```
 
 Where:
 - `DATASET_PAGE_ID`: The ID of the Confluence page containing the variables table
 - `REPORT_PAGE_ID`: The ID of the Confluence page containing headings to link to
+- 'LINK_TYPE' can be
+  - `thecb`: Texas Higher Education Coordinating Board (default)
+  - `sbec`: State Board for Educator Certification
+  - `tea`: Texas Education Agency
 
-### Specifying Link Type
-
-The script supports different educational agency formats:
-
-```
-python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --link-type TYPE
-```
-
-Where `TYPE` can be:
-- `thecb`: Texas Higher Education Coordinating Board (default)
-- `sbec`: State Board for Educator Certification
-- `tea`: Texas Education Agency
-
-### Reset Links
+#### Reset Links
 
 To remove all hyperlinks in the variables table and reset to plain text:
 
@@ -87,7 +76,7 @@ To remove all hyperlinks in the variables table and reset to plain text:
 python erc_link_updater.py --dataset-page-id DATASET_PAGE_ID --report-page-id REPORT_PAGE_ID --reset
 ```
 
-### Finding Page IDs
+#### Finding Page IDs
 
 To find a Confluence page ID:
 1. Open the page in your browser
@@ -95,7 +84,7 @@ To find a Confluence page ID:
    `https://your-instance.atlassian.net/wiki/spaces/SPACE/pages/123456789/Page+Title`
 3. The number (e.g., `123456789`) is the page ID
 
-## How It Works
+### How It Works
 
 1. The script connects to Confluence using your API credentials
 2. It locates the variables table in the source page
@@ -103,21 +92,21 @@ To find a Confluence page ID:
 4. When a match is found, it creates a hyperlink to that specific heading
 5. The script has built-in matching logic to handle different variable naming patterns
 
-## Troubleshooting
+### Troubleshooting
 
 - If no table is found, the script will output "Table not found in source content"
 - If variables aren't matching to headings, try adjusting the `score_threshold` parameter in the `find_heading_for_item_name` function
 - Check Confluence permissions to ensure your API token has read/write access to the pages
 
-# ERC Publish Publications
+## ERC Publish Publications
 
 A Python utility for automatically creating and organizing research publication pages in Confluence based on CSV data.
 
-## Overview
+### Overview
 
 This script reads research publication information from a CSV file and creates hierarchically organized pages in Confluence. It creates type-based parent pages (e.g., "Published Research") and publication detail pages under them.
 
-## Requirements
+### Requirements
 
 - Python 3.6+
 - Required Python packages (install via `pip`):
@@ -126,7 +115,7 @@ This script reads research publication information from a CSV file and creates h
   - `requests`
   - `python-dotenv`
 
-## Setup
+### Setup
 
 1. **Install dependencies**:
    ```
@@ -147,7 +136,7 @@ This script reads research publication information from a CSV file and creates h
    - Click "Create API token"
    - Give it a name and copy the token to your `.env` file
 
-## CSV Format
+### CSV Format
 
 Your CSV file should contain the following columns:
 - `Title` (required): Publication title
@@ -164,9 +153,9 @@ Your CSV file should contain the following columns:
 - `Project Abbreviated Name` (optional): Short project name
 - `Research Area` (optional): Research field or area
 
-## Usage
+### Usage
 
-### Creating/Updating Publication Pages
+#### Creating/Updating Publication Pages
 
 ```
 python erc_publish_publications.py --csv-file your_publications.csv
@@ -174,7 +163,7 @@ python erc_publish_publications.py --csv-file your_publications.csv
 
 By default, the script looks for a file named `erc_publications.csv` if no file is specified.
 
-### Deleting All Pages (with confirmation)
+#### Deleting All Pages (with confirmation)
 
 ```
 python erc_publish_publications.py --delete
@@ -182,7 +171,7 @@ python erc_publish_publications.py --delete
 
 This requires typing "yes" to confirm deletion.
 
-### Preview Deletion (dry run)
+#### Preview Deletion (dry run)
 
 ```
 python erc_publish_publications.py --delete --dry-run
@@ -190,7 +179,7 @@ python erc_publish_publications.py --delete --dry-run
 
 This shows what would be deleted without actually removing any pages.
 
-## How It Works
+### How It Works
 
 1. The script connects to Confluence using your API credentials
 2. It creates or updates parent pages for each unique publication type in your CSV
@@ -200,7 +189,7 @@ This shows what would be deleted without actually removing any pages.
    - Adds labels for filtering/categorization
 4. Invalid URLs are logged as warnings but pages are still created
 
-## Troubleshooting
+### Troubleshooting
 
 - Check the logs for detailed error messages
 - Ensure your Confluence API token has read/write permissions
