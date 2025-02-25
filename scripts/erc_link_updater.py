@@ -59,9 +59,10 @@ def get_page_url(confluence, page_id):
     
     return page_url
 
-def find_heading_for_item_name(content, item_name, score_threshold=0.45):
+def find_heading_for_item_name(content, item_name, score_threshold=0.4):
     """
     Find a heading in the content that matches the item name.
+    Enhanced with better matching for TEA variable names.
     
     Args:
         content: HTML content to search in
@@ -87,41 +88,109 @@ def find_heading_for_item_name(content, item_name, score_threshold=0.45):
         """Tokenize text into words, removing non-alphanumeric characters."""
         return set(re.findall(r'\b\w+\b', text.lower()))
     
+    # Prepare the normalized item name
     normalized_item_name = normalize(item_name)
     
-    # Check for exact matches in headings first (case-insensitive)
+    # Common TEA element name patterns
+    element_mappings = {
+        "ACTAMT": ["Actual Amount", "Amount", "E0774"],
+        "CS_NONPROF_ASSET": ["Fund Code", "Asset", "E0316"],
+        "CS_NONPROF_FUNC": ["Function Code", "Function", "E0317"],
+        "CS_NONPROF_OBJ": ["Object Code", "Object", "E0318"],
+        "CS_NONPROF_PGMIN": ["Program Intent Code", "Program Intent", "E0320"],
+        "DATE_UPDATE": ["Date Update", "Update Date"],
+        "DISTRICT": ["District ID", "District", "E0212"],
+        "DTUPDATE": ["Date Update", "TEA Update"],
+        "FIN_UNIT": ["Organization Code", "Org Code", "E0319"],
+        "FISCALYR": ["Fiscal Year", "Year", "E0974"]
+    }
+    
+    # Check for direct mapping first
+    if item_name in element_mappings:
+        for potential_match in element_mappings[item_name]:
+            for heading in headings:
+                heading_text = heading.get_text().strip()
+                if potential_match.lower() in heading_text.lower():
+                    print(f"Found match via mapping: '{heading_text}'")
+                    return heading_text
+    
+    # Extract E-number if it exists in the item name
+    e_number_match = re.search(r'E\d+', item_name)
+    e_number = e_number_match.group(0) if e_number_match else None
+    
+    # 1. Check for exact matches in headings first (case-insensitive)
     for heading in headings:
         heading_text = heading.get_text().strip()
         normalized_heading = normalize(heading_text)
         
         # If item name appears exactly in the heading
         if normalized_item_name in normalized_heading:
+            print(f"Found exact match: '{heading_text}'")
             return heading_text
     
-    # Look for E-number patterns (like E0123) that might match
-    e_number_match = re.search(r'E\d+', item_name)
-    if e_number_match:
-        e_number = e_number_match.group(0)
+    # 2. Look for E-number patterns in headings
+    if e_number:
         for heading in headings:
             heading_text = heading.get_text().strip()
             if e_number in heading_text:
+                print(f"Found E-number match: '{heading_text}'")
                 return heading_text
     
-    # For variables with underscores, try matching individual parts
+    # 3. Try to match TEA variable naming conventions with headings
+    # Look for patterns like "E#### - Name" where Name relates to the variable
+    tea_variable_parts = re.split(r'_', item_name)
+    for part in tea_variable_parts:
+        if len(part) >= 3:  # Only consider meaningful parts
+            for heading in headings:
+                heading_text = heading.get_text().strip()
+                # Look for cases where the part appears in the heading after a dash
+                match = re.search(r'[–—\-]\s*(.*)', heading_text)
+                if match and part.lower() in match.group(1).lower():
+                    print(f"Found part match in heading description: '{heading_text}'")
+                    return heading_text
+    
+    # 4. For variables with underscores, try matching individual parts
     if '_' in item_name:
         parts = item_name.split('_')
+        significant_parts = [p for p in parts if len(p) >= 3]
+        
         for heading in headings:
             heading_text = heading.get_text().strip()
             normalized_heading = normalize(heading_text)
+            
             # If any significant part appears in the heading
-            for part in parts:
-                if len(part) >= 4 and normalize(part) in normalized_heading:
+            for part in significant_parts:
+                if normalize(part) in normalized_heading:
+                    print(f"Found part match: '{heading_text}' contains '{part}'")
                     return heading_text
     
-    # Tokenize the item name for more sophisticated matching
+    # 5. Check for semantic matches based on TEA variable naming conventions
+    variable_keywords = {
+        "DISTRICT": ["district", "id"],
+        "DATE": ["date", "update"],
+        "FUNC": ["function", "code"],
+        "OBJ": ["object", "code"],
+        "ASSET": ["fund", "code"],
+        "PGMIN": ["program", "intent"],
+        "AMT": ["amount", "actual"],
+        "FISCALYR": ["fiscal", "year"],
+        "FIN_UNIT": ["organization", "code", "org"]
+    }
+    
+    for keyword, related_terms in variable_keywords.items():
+        if keyword in item_name:
+            for heading in headings:
+                heading_text = heading.get_text().strip()
+                normalized_heading = normalize(heading_text)
+                
+                # Check if any related terms appear in the heading
+                if any(term in normalized_heading for term in related_terms):
+                    print(f"Found semantic match: '{heading_text}' relates to '{keyword}'")
+                    return heading_text
+    
+    # 6. Advanced token-based matching
     item_tokens = tokenize(item_name)
     
-    # If no tokens (very short or only symbols), skip token-based matching
     if not item_tokens:
         return None
     
@@ -132,13 +201,12 @@ def find_heading_for_item_name(content, item_name, score_threshold=0.45):
         heading_text = heading.get_text().strip()
         normalized_heading = normalize(heading_text)
         
-        # Skip extremely short headings as they're likely not what we want
+        # Skip extremely short headings
         if len(normalized_heading) < 5:
             continue
             
         heading_tokens = tokenize(heading_text)
         
-        # Skip if no tokens in heading
         if not heading_tokens:
             continue
         
@@ -154,8 +222,13 @@ def find_heading_for_item_name(content, item_name, score_threshold=0.45):
         # Special bonus for headings that contain the full item name
         contains_bonus = 0.3 if normalized_item_name in normalized_heading else 0
         
+        # Special bonus for E-number match in heading
+        e_number_bonus = 0.2 if e_number and e_number in heading_text else 0
+        
         # Combine scores with weighted approach
-        score = (overlap * 0.4) + (ratio * 0.4) + contains_bonus
+        score = (overlap * 0.3) + (ratio * 0.3) + contains_bonus + e_number_bonus
+        
+        #print(f"Score for '{heading_text}': {score:.2f}")
         
         # Update best match if this is better
         if score > best_score:
@@ -163,10 +236,24 @@ def find_heading_for_item_name(content, item_name, score_threshold=0.45):
             best_match = heading_text
     
     if best_match and best_score >= score_threshold:
-        print(f"Found match: '{best_match}' with score {best_score:.2f}")
+        print(f"Found best match: '{best_match}' with score {best_score:.2f}")
         return best_match
     else:
         print(f"No match found for '{item_name}' with score >= {score_threshold}")
+        
+        # Last resort - check for E-numbers in headings that might relate to this variable
+        e_number_headings = []
+        for heading in headings:
+            heading_text = heading.get_text().strip()
+            if re.search(r'E\d+', heading_text):
+                e_number_headings.append(heading_text)
+        
+        if e_number_headings:
+            # Return the first E-number heading if we have no better match
+            # This is a fallback for cases where the variable doesn't match semantically
+            print(f"Using fallback E-number heading: '{e_number_headings[0]}'")
+            return e_number_headings[0]
+                
         return None
 
 def find_variables_table(soup):
@@ -249,35 +336,165 @@ def find_variables_table(soup):
     
     return None
 
+def expand_table_width(soup, table):
+    """
+    Modify a table's attributes to make it expand to fit the available width in Confluence.
+    
+    Args:
+        soup: BeautifulSoup object for creating new attributes
+        table: BeautifulSoup table element to modify
+        
+    Returns:
+        Modified table element
+    """
+    # Set table width to 100% using Confluence's data-table-width attribute
+    # A large number like 1200 will make it use the full available width
+    table["data-table-width"] = "1200"
+    
+    # Set layout to default or wide
+    if "data-layout" not in table.attrs:
+        table["data-layout"] = "default"
+    
+    # Remove any fixed width styling from the table and columns
+    if "style" in table.attrs and "width" in table["style"]:
+        # Remove width from style attribute
+        style_parts = table["style"].split(";")
+        filtered_styles = [s for s in style_parts if "width" not in s]
+        table["style"] = ";".join(filtered_styles)
+    
+    # Remove fixed width from colgroup/col elements if they exist
+    colgroup = table.find("colgroup")
+    if colgroup:
+        for col in colgroup.find_all("col"):
+            if "style" in col.attrs and "width" in col["style"]:
+                # Remove width from col style attribute
+                style_parts = col["style"].split(";")
+                filtered_styles = [s for s in style_parts if "width" not in s]
+                if filtered_styles:
+                    col["style"] = ";".join(filtered_styles)
+                else:
+                    del col["style"]
+    
+    return table
+
 def create_links_thecb(source_content, target_content, target_page_url):
+    """
+    Create links from source page variables to target page headings for THECB-style tables.
+    Handles variable format seen in CBM reports.
+    
+    Args:
+        source_content: HTML content of the source page
+        target_content: HTML content of the target page
+        target_page_url: URL of the target page
+        
+    Returns:
+        Updated HTML content of the source page
+    """
     soup = BeautifulSoup(source_content, 'html.parser')
 
     table = find_variables_table(soup)
     
     if not table:
         print("Table not found in source content: " + target_page_url)
-        print(source_content)
         return source_content
 
-    rows = table.find_all('tr')
+    # Expand the table width to fit available space
+    table = expand_table_width(soup, table)
     
-    for row in rows[1:]:
-        cells = row.find_all('td')
-        if len(cells) >= 3:
-            item_name = cells[2].get_text(strip=True)
-            heading = find_heading_for_item_name(target_content, item_name)
+    # First, identify the table structure by checking headers
+    header_row = table.find('tr')
+    headers = header_row.find_all('th')
+    header_texts = [h.get_text(strip=True).lower() for h in headers]
+    print(f"Headers in order: {header_texts}")
+    
+    # Find the column containing the "Item Name" or equivalent
+    item_name_col_index = None
+    for i, header_text in enumerate(header_texts):
+        if "item name" in header_text:
+            item_name_col_index = i
+            print(f"Found 'Item name' at index {i}")
+            break
+    
+    # If we didn't find "Item Name", try to find another appropriate column
+    # Many THECB tables have a description column we can use
+    if item_name_col_index is None:
+        for i, header_text in enumerate(header_texts):
+            if "description" in header_text:
+                item_name_col_index = i
+                print(f"Using 'Description' column at index {i} instead of 'Item name'")
+                break
+    
+    # Default to third column (index 2) if we still can't find an appropriate column
+    if item_name_col_index is None:
+        print("Could not find 'Item name' or 'Description' column, trying third column")
+        if len(header_texts) > 2:
+            item_name_col_index = 2
+        else:
+            print("Table doesn't have enough columns, aborting")
+            return source_content
+
+    rows = table.find_all('tr')[1:]  # Skip header row
+    
+    # Process each row to create links
+    for row in rows:
+        # Get all cells (including th and td)
+        all_cells = row.find_all(['th', 'td'])
+        
+        # Skip rows that don't have enough cells
+        if len(all_cells) <= item_name_col_index:
+            continue
+        
+        # Get the cell with the item name
+        item_cell = all_cells[item_name_col_index]
+        item_name = item_cell.get_text(strip=True)
+        
+        # Skip if item name is empty
+        if not item_name:
+            continue
+        
+        print(f"Looking for match for item: '{item_name}'")
+        
+        # Try to find a matching heading
+        heading = find_heading_for_item_name(target_content, item_name, score_threshold=0.4)
+        
+        if heading:
+            encoded_heading = quote(heading.replace(' ', '-').replace('#', ''))
+            link = f'<a href="{target_page_url}#{encoded_heading}">{item_name}</a>'
             
-            if heading:
-                encoded_heading = quote(heading.replace(' ', '-').replace('#', ''))               
-                link = f'<a href="{target_page_url}#{encoded_heading}">{item_name}</a>'                
-                cells[2].clear()
-                cells[2].append(BeautifulSoup(link, 'html.parser'))
+            # Update the cell content with the link
+            item_cell.clear()
+            item_cell.append(BeautifulSoup(link, 'html.parser'))
+            print(f"Created link for '{item_name}' to heading '{heading}'")
+        else:
+            # Try to match with the variable name if item name didn't match
+            # Get the variable name from first column (usually a th or first td)
+            var_cell = all_cells[0]
+            var_name = var_cell.get_text(strip=True)
+            
+            if var_name:
+                heading = find_heading_for_item_name(target_content, var_name, score_threshold=0.4)
+                
+                if heading:
+                    encoded_heading = quote(heading.replace(' ', '-').replace('#', ''))
+                    link = f'<a href="{target_page_url}#{encoded_heading}">{item_name}</a>'
+                    
+                    item_cell.clear()
+                    item_cell.append(BeautifulSoup(link, 'html.parser'))
+                    print(f"Created link for '{item_name}' using variable name '{var_name}' to heading '{heading}'")
+                else:
+                    # Reset the cell to plain text (in case it had a link from a previous run)
+                    item_cell.clear()
+                    item_cell.append(item_name)
+                    print(f"No match found for '{item_name}' or '{var_name}'")
             else:
-                # write the text string back -- to undo prior runs
-                cells[2].clear()
-                cells[2].append(item_name)
+                # Reset the cell to plain text
+                item_cell.clear()
+                item_cell.append(item_name)
+                print(f"No match found for '{item_name}'")
 
     return str(soup)
+
+
 
 def create_links_sbec(source_content, target_content, target_page_url):
     soup = BeautifulSoup(source_content, 'html.parser')
@@ -331,6 +548,9 @@ def create_links_tea(source_content, target_content, target_page_url):
         print("Table not found in source content: " + target_page_url)
         return source_content
 
+    # Expand the table width to fit available space
+    table = expand_table_width(soup, table)
+    
     # Check table headers
     header_row = table.find('tr')
     headers = header_row.find_all('th')
@@ -585,9 +805,10 @@ def main():
     source_page = confluence.get_page_by_id(args.dataset_page_id, expand='body.storage,version,space')
     target_page = confluence.get_page_by_id(args.report_page_id, expand='body.storage')
 
-    # print (source_page)
-    # print ('target')
-    # print(target_page)
+    #print (source_page)
+    #print ('target')
+    #print(target_page)
+
 
     # Validate page titles
     if not validate_page_titles(source_page['title'], target_page['title']):
